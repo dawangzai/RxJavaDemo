@@ -2,11 +2,19 @@ package com.wangzai.rxjavademo.http;
 
 import android.util.Log;
 
+import com.wangzai.rxjavademo.bean.PhotoBean;
 import com.wangzai.rxjavademo.http.api.PhotoService;
+import com.wangzai.rxjavademo.http.exception.ApiException;
+import com.wangzai.rxjavademo.http.observer.HttpObserver;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.functions.Function;
+import io.reactivex.schedulers.Schedulers;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -36,13 +44,13 @@ public class HttpClient {
     }
 
     public PhotoService getPhotoService() {
-        return mPhotoService == null ? configRetrofit(PhotoService.class, true) : mPhotoService;
+        return mPhotoService == null ? configRetrofit(PhotoService.class) : mPhotoService;
     }
 
-    private <T> T configRetrofit(Class<T> service, boolean isGetToken) {
+    private <T> T configRetrofit(Class<T> service) {
         mRetrofit = new Retrofit.Builder()
                 .baseUrl("https://api.unsplash.com/")
-                .client(configClient(true))
+                .client(configClient())
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build();
@@ -50,16 +58,16 @@ public class HttpClient {
         return mRetrofit.create(service);
     }
 
-    private OkHttpClient configClient(final boolean isGetToken) {
+    private OkHttpClient configClient() {
         OkHttpClient.Builder okHttpClient = new OkHttpClient.Builder();
+        okHttpClient.connectTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS); //设置超时时间
 
         //为所有请求添加头部 Header 配置的拦截器
         Interceptor headerIntercept = new Interceptor() {
             @Override
             public Response intercept(Chain chain) throws IOException {
                 Request.Builder builder = chain.request().newBuilder();
-//                b05bfc46a0de4842346cb5ce7c766b3a8c9da071ec77f3b5f719406829c2fb31
-                builder.addHeader("Authorization", "Client-ID " + "b05bfc46a0de4842346cb5ce7c766b3a8c9da071ec77f3b5f719406829c2fb31");
+                builder.addHeader("Authorization", "Client-ID " + "unsplash网站申请的应用程序key");
 
                 Request request = builder.build();
 
@@ -67,21 +75,38 @@ public class HttpClient {
             }
         };
 
-        // Log信息拦截器
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
             @Override
             public void log(String message) {
-                //打印retrofit日志
                 Log.i("test", "retrofitBack = " + message);
             }
         });
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-//            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS);
         okHttpClient.addInterceptor(loggingInterceptor);
 
-        okHttpClient.connectTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
         okHttpClient.addNetworkInterceptor(headerIntercept);
 
         return okHttpClient.build();
+    }
+
+    private class HttpResultFunction<T> implements Function<retrofit2.Response<T>, T> {
+
+        @Override
+        public T apply(@NonNull retrofit2.Response<T> response) throws Exception {
+            int code = response.code();
+            if (code == 200) {
+                return response.body();
+            } else {
+                throw new ApiException(code, response.message());
+            }
+        }
+    }
+
+    public void getNewestPhotoList(HttpObserver<List<PhotoBean>> observer, int page, int pre_page) {
+        getPhotoService().getNewestPhotoList(page, pre_page)
+                .map(new HttpResultFunction<List<PhotoBean>>())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(observer);
     }
 }

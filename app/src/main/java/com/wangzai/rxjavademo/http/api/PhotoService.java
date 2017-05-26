@@ -5,6 +5,8 @@ import com.wangzai.rxjavademo.bean.PhotoBean;
 import java.util.List;
 
 import io.reactivex.Observable;
+
+import retrofit2.Response;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
@@ -20,7 +22,7 @@ public interface PhotoService {
      * @return
      */
     @GET("photos/")
-    Observable<ApiResponse<List<PhotoBean>>> getNewestPhotoList(@Query("page") int page, @Query("per_page") int per_page);
+    Observable<Response<List<PhotoBean>>> getNewestPhotoList(@Query("page") int page, @Query("per_page") int per_page);
 
     /**
      * 获取单张图片
@@ -28,5 +30,5 @@ public interface PhotoService {
      * @return
      */
     @GET("photos/{id}")
-    Observable<ApiResponse<PhotoBean>> getSinglePhoto(@Path("id") String id);
+    Observable<Response<PhotoBean>> getSinglePhoto(@Path("id") String id);
 }

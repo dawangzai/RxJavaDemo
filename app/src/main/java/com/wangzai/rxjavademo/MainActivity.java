@@ -1,14 +1,15 @@
 package com.wangzai.rxjavademo;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 
-import io.reactivex.Observable;
-import io.reactivex.ObservableEmitter;
-import io.reactivex.ObservableOnSubscribe;
-import io.reactivex.Observer;
-import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.Disposable;
+import com.wangzai.rxjavademo.bean.PhotoBean;
+import com.wangzai.rxjavademo.http.HttpClient;
+import com.wangzai.rxjavademo.http.callback.OnResultCallback;
+import com.wangzai.rxjavademo.http.observer.HttpObserver;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -17,31 +18,21 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Observable.create(new ObservableOnSubscribe<Integer>() {
-            @Override
-            public void subscribe(@NonNull ObservableEmitter<Integer> e) throws Exception {
+        getPhotoList();
+    }
 
-            }
-        }).subscribe(new Observer<Integer>() {
+    private void getPhotoList() {
+        HttpObserver<List<PhotoBean>> observer = new HttpObserver<>(new OnResultCallback<List<PhotoBean>>() {
             @Override
-            public void onSubscribe(@NonNull Disposable d) {
-                
-            }
-
-            @Override
-            public void onNext(@NonNull Integer integer) {
-
+            public void onSuccess(List<PhotoBean> photoBeen) {
+                List<PhotoBean> photoBeen1 = photoBeen;
             }
 
             @Override
-            public void onError(@NonNull Throwable e) {
-
-            }
-
-            @Override
-            public void onComplete() {
-
+            public void onFailed(int code, String errorMsg) {
+                Log.i("RxJava2Log", "------code=" + code + "------msg=" + errorMsg);
             }
         });
+        HttpClient.getInstance().getNewestPhotoList(observer, 1, 5);
     }
 }
